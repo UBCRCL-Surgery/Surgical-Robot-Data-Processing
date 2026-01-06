@@ -1,0 +1,8 @@
+{
+  "timezone": "America/Vancouver",
+  "left_ts": "/media/zijianwu/My Book/SurgMani/KnotTying/ChristopherNguan/1/endo/video_stream_1_20251211_134940_timestamps.txt",
+  "right_ts": "/media/zijianwu/My Book/SurgMani/KnotTying/ChristopherNguan/1/endo/video_stream_2_20251211_134940_timestamps.txt",
+  "gaze_log": "/media/zijianwu/My Book/SurgMani/KnotTying/ChristopherNguan/1/gaze/gazelog_11-12-2025_13-49-14.txt",
+  "side_ts": "/media/zijianwu/My Book/SurgMani/KnotTying/ChristopherNguan/1/side_camera/output_timestamps.txt",
+  "dvapi_csv": "/media/zijianwu/My Book/SurgMani/KnotTying/ChristopherNguan/1/data_local_part_1_11_12_2025_13_49_21.csv"
+}

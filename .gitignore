@@ -1,0 +1,10 @@
+__pycache__
+legacy/
+proxy_left_frames/
+**/__pycache__/
+**/out_data/
+**/projects/
+self_check.py
+**/__pycache__/
+example_/
+*.mp4
