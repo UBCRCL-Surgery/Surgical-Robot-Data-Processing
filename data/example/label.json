@@ -1,0 +1,9 @@
+{
+    "labels": [
+        {"id": 0, "gesture": "pick up the needle", "color": "#4C78A8"},
+        {"id": 1, "gesture": "Insert the needle", "color": "#F58518"},
+        {"id": 2, "gesture": "Pull the suture thread", "color": "#54A24B"},
+        {"id": 3, "gesture": "Tie a surgical knot", "color": "#E45756"}
+    ],
+    "unlabeled": {"id": -1, "gesture": "Unlabeled", "color": "#B0B0B0"}
+}

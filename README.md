@@ -29,7 +29,7 @@ python ./sync_all.py --config ./data/example/mm_timestamp.json --out_csv ./data/
 ## B. Trim Left Video Based on Sync Data
 This stage is to exclude useless frames for easier clipping later. All frames of the generated left proxy video can be retrieved in `sync_table_all.csv` after this stage.
 
-You need: (1) sync file `sync_table_all.csv` from Stage A; (2) raw left video. 
+You need: (1) sync file `sync_table_all.csv` from Stage A; (2) raw left video (you can download [here](https://drive.google.com/file/d/12JozZDyQ9tZ60jvYP73CLpt3HmZ9byMm/view?usp=sharing) and put it in ./data/example). 
 
 Run:
 ```
