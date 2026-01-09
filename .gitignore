@@ -9,3 +9,6 @@ self_check.py
 example_/
 *.mp4
 *.csv
+SurgMani
+.gradio*
+data/

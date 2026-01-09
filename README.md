@@ -44,7 +44,7 @@ If you do not need the extracted frames, remove --frames_dir [EXTRACT FRAMES DIR
 
 ## C. Run GUI
 1. Run `ssh -L 8000:127.0.0.1:8000 user@server`, where change `user@server` as yours.
-2. Run `uvicorn app:app --host 127.0.0.1 --port 8000` on your server.
+2. Run `uvicorn app_openh:app --host 127.0.0.1 --port 8000` on your server.
 3. Then you should be able to open `http://localhost:8000/docs` in the local browser.
 
 Note that all path need to be server path.
