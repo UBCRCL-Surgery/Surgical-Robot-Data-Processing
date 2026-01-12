@@ -44,14 +44,36 @@ If you do not need the extracted frames, remove --frames_dir [EXTRACT FRAMES DIR
 
 ## C. Run GUI
 1. Run `ssh -L 8000:127.0.0.1:8000 user@server`, where change `user@server` as yours.
-2. Run `uvicorn app_openh:app --host 127.0.0.1 --port 8000` on your server.
+2. Run `uvicorn app_openh_v1:app --host 127.0.0.1 --port 8000` on your server.
 3. Then you should be able to open `http://localhost:8000/docs` in the local browser.
 
-Note that all path need to be server path.
+After labeling, export a .zip file. 
 
-## D. Clip Episodes
-The usage of this GUI is very straightforward.
+## D. Convert to LeRobot Format
+1. Get `sync_table.csv` from the zip file.
+2. Run:
+```
+python export_lerobot.py \
+  --sync-all /path/to/sync_table_all.csv \
+  --sync-ep /path/to/sync_table.csv \
+  --left-video /path/to/left_video \
+  --right-video /path/to/right_video \
+  --side-video /path/to/side_camera_video \
+  --gaze-video /path/to/gaze_video \
+  --out /path/to/output_root \
+  --dataset-name [project id, e.g. 1bae367cb3]
+```
+For example:
+```
+python export_lerobot.py \
+  --sync-all /home/zijianwu/Codes/surg_gui/data/NeedlePassing/sync_table_all_chris_1.csv \
+  --sync-ep /home/zijianwu/Codes/surg_gui/data/NeedlePassing/sync_table.csv \
+  --left-video /media/zijianwu/My\ Book/SurgMani/NeedlePassing/ChristopherNguan/1/endo/video_stream_2_20251211_151920.mp4 \
+  --right-video /media/zijianwu/My\ Book/SurgMani/NeedlePassing/ChristopherNguan/1/endo/video_stream_1_20251211_151920.mp4 \
+  --side-video /media/zijianwu/My\ Book/SurgMani/NeedlePassing/ChristopherNguan/1/side_camera/output.mp4 \
+  --gaze-video /media/zijianwu/My\ Book/SurgMani/NeedlePassing/ChristopherNguan/1/gaze/eyeVideo_12-11-2025_15-18-51.avi \
+  --out /home/zijianwu/Codes/surg_gui/data \
+  --dataset-name 1bae367cb3
+```
 
-## E. Export Data With Label
-
-## F. Convert to LeRobot Format
+3. Validate the data by run: `python ./validate_formatting.py /path/to/your/dataset`. For example, run `python ./validate_formatting.py /home/zijianwu/Codes/surg_gui/data/openh_ubc_sample/1bae367cb3`. You should see `0 ERROR` is the data is good.

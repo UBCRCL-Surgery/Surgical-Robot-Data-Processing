@@ -1,0 +1,294 @@
+{
+    "labels": [
+        {
+            "id": 1,
+            "gesture": "Reaching for needle with right hand",
+            "color": "#F58518"
+        },
+        {
+            "id": 2,
+            "gesture": "Positioning needle",
+            "color": "#54A24B"
+        },
+        {
+            "id": 3,
+            "gesture": "Pushing needle through tissue",
+            "color": "#E45756"
+        },
+        {
+            "id": 4,
+            "gesture": "Transferring needle from left to right",
+            "color": "#72B7B2"
+        },
+        {
+            "id": 5,
+            "gesture": "Moving to center with needle in grip",
+            "color": "#EECA3B"
+        },
+        {
+            "id": 6,
+            "gesture": "Pulling suture with left hand",
+            "color": "#B279A2"
+        },
+        {
+            "id": 7,
+            "gesture": "Pulling suture with right hand",
+            "color": "#FF9DA6"
+        },
+        {
+            "id": 8,
+            "gesture": "Orienting needle",
+            "color": "#9D755D"
+        },
+        {
+            "id": 9,
+            "gesture": "Using right hand to help tighten suture",
+            "color": "#BAB0AC"
+        },
+        {
+            "id": 10,
+            "gesture": "Loosening more suture",
+            "color": "#D37295"
+        },
+        {
+            "id": 11,
+            "gesture": "Dropping suture at end and moving to end points",
+            "color": "#FABFD2"
+        },
+        {
+            "id": 12,
+            "gesture": "Reaching for needle with left hand",
+            "color": "#B6A0C9"
+        },
+        {
+            "id": 13,
+            "gesture": "Making C loop around right hand",
+            "color": "#6C8EBF"
+        },
+        {
+            "id": 14,
+            "gesture": "Reaching for suture with right hand",
+            "color": "#9EBE73"
+        },
+        {
+            "id": 15,
+            "gesture": "Pulling suture with both hands",
+            "color": "#E3D66D"
+        },
+        {
+            "id": 16,
+            "gesture": "Grasping the needle with left hand",
+            "color": "#FDCFE8"
+        },
+        {
+            "id": 17,
+            "gesture": "Reaching for suture with left hand",
+            "color": "#FFB5A7"
+        },
+        {
+            "id": 20,
+            "gesture": "Approach the bead with the right hand",
+            "color": "#81917D"
+        },
+        {
+            "id": 21,
+            "gesture": "Approach the bead with the left hand",
+            "color": "#10B7F1"
+        },
+        {
+            "id": 22,
+            "gesture": "Grasp the bead",
+            "color": "#290455"
+        },
+        {
+            "id": 23,
+            "gesture": "Move the bead to the column",
+            "color": "#2A1ECA"
+        },
+        {
+            "id": 24,
+            "gesture": "Align and drop the bead",
+            "color": "#574799"
+        },
+        {
+            "id": 25,
+            "gesture": "Move the bead to the enclosure",
+            "color": "#D46656"
+        },
+        {
+            "id": 31,
+            "gesture": "Peeling the upper layer tissue",
+            "color": "#EAD94C"
+        },
+        {
+            "id": 32,
+            "gesture": "Cutting gauze approaching 5 o'clock point of the outside circle",
+            "color": "#C5E0A4"
+        },
+        {
+            "id": 33,
+            "gesture": "Cutting gauze from 5 o'clock to 11 o'clock clockwise along the outside circle",
+            "color": "#8BD2E1"
+        },
+        {
+            "id": 34,
+            "gesture": "Moving the right-hand scissor back to the 5 o'clock point",
+            "color": "#FFA3AF"
+        },
+        {
+            "id": 35,
+            "gesture": "Cutting the remaining gauze from 5 o'clock counterclockwise along the outside circle",
+            "color": "#FFBE7D"
+        },
+        {
+            "id": 36,
+            "gesture": "Tightening the gauze with the left-hand prograsp forcep",
+            "color": "#D5A6BD"
+        },
+        {
+            "id": 37,
+            "gesture": "Lifting the gauze with the right-hand scissor",
+            "color": "#A2C8EC"
+        },
+        {
+            "id": 38,
+            "gesture": "Lifting the gauze with the left-hand prograsp forcep",
+            "color": "#B4E197"
+        },
+        {
+            "id": 40,
+            "gesture": "Approach the Peg with the right hand",
+            "color": "#B3AA02"
+        },
+        {
+            "id": 41,
+            "gesture": "Approach the Peg with the left hand",
+            "color": "#9B012F"
+        },
+        {
+            "id": 42,
+            "gesture": "Align and grasp the Peg",
+            "color": "#43CBA7"
+        },
+        {
+            "id": 43,
+            "gesture": "Lift the Peg",
+            "color": "#68726D"
+        },
+        {
+            "id": 44,
+            "gesture": "Get the arms together to transfer the Peg",
+            "color": "#07EDBF"
+        },
+        {
+            "id": 45,
+            "gesture": "Exchange the Peg",
+            "color": "#A59969"
+        },
+        {
+            "id": 46,
+            "gesture": "Approach the pole with the Peg",
+            "color": "#11F0A8"
+        },
+        {
+            "id": 47,
+            "gesture": "Align and place the Peg on the pole",
+            "color": "#C3E166"
+        },
+        {
+            "id": 51,
+            "gesture": "Reaching for ring with right hand",
+            "color": "#1F77B4"
+        },
+        {
+            "id": 52,
+            "gesture": "Picking up ring with right hand",
+            "color": "#AEC7E8"
+        },
+        {
+            "id": 53,
+            "gesture": "Picking up ring with left hand",
+            "color": "#FF9896"
+        },
+        {
+            "id": 54,
+            "gesture": "Running ring through wire with right hand",
+            "color": "#98DF8A"
+        },
+        {
+            "id": 55,
+            "gesture": "Running ring through wire with left hand",
+            "color": "#C49C94"
+        },
+        {
+            "id": 56,
+            "gesture": "Releasing ring with left hand",
+            "color": "#C7C7C7"
+        },
+        {
+            "id": 57,
+            "gesture": "Reaching for ring with left hand",
+            "color": "#DBDB8D"
+        },
+        {
+            "id": 58,
+            "gesture": "Transferring ring",
+            "color": "#9EDAE5"
+        },
+        {
+            "id": 59,
+            "gesture": "Releasing ring with right hand",
+            "color": "#9467BD"
+        },
+        {
+            "id": 60,
+            "gesture": "Adjusting right hand grasp of ring with left hand help",
+            "color": "#8C564B"
+        },
+        {
+            "id": 61,
+            "gesture": "Adjusting left hand grasp of ring with right hand help",
+            "color": "#E377C2"
+        },
+        {
+            "id": 62,
+            "gesture": "Picking up ring with left hand with help from right hand",
+            "color": "#7F7F7F"
+        },
+        {
+            "id": 63,
+            "gesture": "Picking up ring with right hand with help from left hand",
+            "color": "#BCBD22"
+        },
+        {
+            "id": 64,
+            "gesture": "Running ring through wire with both hands",
+            "color": "#17BECF"
+        },
+        {
+            "id": 65,
+            "gesture": "Releasing ring with both hands",
+            "color": "#FFBB78"
+        },
+        {
+            "id": 71,
+            "gesture": "Moving the camera to look at the region of interest",
+            "color": "#FF7F0E"
+        },
+        {
+            "id": 72,
+            "gesture": "Zooming in the camera",
+            "color": "#2CA02C"
+        },
+        {
+            "id": 73,
+            "gesture": "Zooming out the camera",
+            "color": "#D62728"
+        }
+    ],
+    "unlabeled": {
+        "id": -1,
+        "gesture": "Unlabeled",
+        "color": "#B0B0B0"
+    }
+}

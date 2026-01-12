@@ -12,3 +12,4 @@ example_/
 SurgMani
 .gradio*
 data/
+**/.frame_cache/
