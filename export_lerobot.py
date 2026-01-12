@@ -161,7 +161,8 @@ def make_episode_video_from_frames(frames_in_dir: Path, frame_indices: List[int]
         "ffmpeg", "-hide_banner", "-loglevel", "error",
         "-framerate", f"{fps}",
         "-i", str(tmp / "frame_%06d.png"),
-        "-vf", f"scale={W}:{H}",
+        "-vf", f"scale={W}:{H},setsar=1,setdar=0",
+        # "-vf", f"scale={W}:{H}",
         "-r", f"{fps}",
         "-vsync", "cfr",
         "-pix_fmt", "yuv420p",
@@ -469,12 +470,16 @@ def main():
         cam_gaze = "observation.images.gaze"
 
         w, h = make_episode_video_from_frames(left_frames_dir, left_idxs, _video_out(cam_left), fps_ref, tuple(args.image_size))
+        print(w, h)
         video_shapes.setdefault(cam_left, (h, w))
         w, h = make_episode_video_from_frames(right_frames_dir, right_idxs, _video_out(cam_right), fps_ref, tuple(args.image_size))
+        print(w, h)
         video_shapes.setdefault(cam_right, (h, w))
         w, h = make_episode_video_from_frames(side_frames_dir, side_idxs, _video_out(cam_side), fps_ref, tuple(args.image_size))
+        print(w, h)
         video_shapes.setdefault(cam_side, (h, w))
         w, h = make_episode_video_from_frames(gaze_frames_dir, gaze_idxs, _video_out(cam_gaze), fps_ref, tuple(args.image_size))
+        print(w, h)
         video_shapes.setdefault(cam_gaze, (h, w))
 
         total_videos += 4
