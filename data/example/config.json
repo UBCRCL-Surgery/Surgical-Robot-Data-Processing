@@ -1,0 +1,16 @@
+{
+  "timezone": "America/Vancouver",
+  "base_path": "D:/dataset/Surgical-Robot-Data-Processing/data/SurgMani/KnotTying/PaulLee/1/",
+  "left_ts": "endo/video_stream_2_20251229_145903_timestamps.txt",
+  "right_ts": "endo/video_stream_1_20251229_145903_timestamps.txt",
+  "gaze_log": "gaze/gazelog_29-12-2025_14-58-42.txt",
+  "dvapi_csv": "data_local_part_1_29_12_2025_14_58_47.csv",
+  "video": "endo/video_stream_2_20251229_145903.mp4",
+  
+  "side_ts": "side_camera/output_timestamps.txt",
+  "sync_csv": "sync_table_all.csv",
+  "out_video": "left_trimmed.mp4",
+  "out_video_h264": "left_trimmed_h264.mp4",
+  "out_map": "proxy_left_index_map.csv",
+  "label_schema": "D:/dataset/Surgical-Robot-Data-Processing/data/projects/label.json"
+}

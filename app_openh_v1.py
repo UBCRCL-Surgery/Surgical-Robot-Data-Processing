@@ -366,7 +366,7 @@ def ingest_path(project_id: str, req: IngestPathReq):
 
     config_json = read_json(Path(req.config_json_path))
     base_path = config_json.get("base_path")
-    left_video_path = base_path + config_json.get("out_video")
+    left_video_path = base_path + config_json.get("out_video_h264")
     sync_table_csv = base_path + config_json.get("sync_csv")
     label_schema_json = config_json.get("label_schema")
 

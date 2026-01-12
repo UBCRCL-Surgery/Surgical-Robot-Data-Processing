@@ -11,5 +11,4 @@ example_/
 *.csv
 SurgMani
 .gradio*
-data/
 **/.frame_cache/
