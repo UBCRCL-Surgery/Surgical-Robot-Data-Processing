@@ -338,9 +338,10 @@ class EpisodeUpdateReq(BaseModel):
 
 
 class IngestPathReq(BaseModel):
-    left_video_path: str
-    sync_table_csv: str
+    left_video_path: Optional[str] = None
+    sync_table_csv: Optional[str] = None
     label_schema_json: Optional[str] = None
+    config_json_path: Optional[str] = None
 # =========================
 # Project
 # =========================
@@ -363,11 +364,17 @@ def sample_label_schema():
 def ingest_path(project_id: str, req: IngestPathReq):
     pdir = ensure_project_dir(project_id)
 
-    vsrc = Path(req.left_video_path)
+    config_json = read_json(Path(req.config_json_path))
+    base_path = config_json.get("base_path")
+    left_video_path = base_path + config_json.get("out_video")
+    sync_table_csv = base_path + config_json.get("sync_csv")
+    label_schema_json = config_json.get("label_schema")
+
+    vsrc = Path(left_video_path)
     if not vsrc.exists():
         raise HTTPException(status_code=400, detail=f"left_video_path not found on server: {vsrc}")
 
-    ssrc = Path(req.sync_table_csv)
+    ssrc = Path(sync_table_csv)
     if not ssrc.exists():
         raise HTTPException(status_code=400, detail=f"sync_table_csv not found on server: {ssrc}")
 
@@ -377,8 +384,8 @@ def ingest_path(project_id: str, req: IngestPathReq):
 
     # Copy label schema into project (optional)
     schema_out = pdir / "index" / "label_schema.json"
-    if req.label_schema_json:
-        load_validate_write_label_schema(Path(req.label_schema_json), schema_out)
+    if label_schema_json:
+        load_validate_write_label_schema(Path(label_schema_json), schema_out)
     else:
         load_validate_write_label_schema(None, schema_out)
 
@@ -785,16 +792,8 @@ def ui(project_id: str):
 
     <div class="pathRow" style="margin-top:8px;">
       <div>
-        <label>left_video_path (server absolute path)</label>
-        <input id="pVideo" placeholder="/data/.../left_overlap.mp4"/>
-      </div>
-      <div>
-        <label>sync_table_csv (server absolute path)</label>
-        <input id="pSync" placeholder="/data/.../sync_table.csv"/>
-      </div>
-      <div>
-        <label>label_schema_json (optional)</label>
-        <input id="pLabel" placeholder="/data/.../label_schema.json"/>
+        <label>config.json</label>
+        <input id="pConfigJson" placeholder="/data/.../config.json"/>
       </div>
 <button id="btnIngestPath">Ingest from Paths</button>
       <span id="ingestStatus" class="pill">not ingested</span>
@@ -1185,18 +1184,13 @@ document.getElementById('btnExport').onclick = () => { window.location = `/proje
 
 // Path ingest
 document.getElementById('btnIngestPath').onclick = async () => {
-  const left_video_path = document.getElementById('pVideo').value.trim();
-  const sync_table_csv = document.getElementById('pSync').value.trim();
-  const label_schema_json = document.getElementById('pLabel').value.trim();
-  if (!left_video_path || !sync_table_csv) { alert("Please fill left_video_path and sync_table_csv."); return; }
+  const config_json_path = document.getElementById('pConfigJson').value.trim();
 
   ingestStatus.textContent = "ingesting...";
   ingestStatus.classList.remove("ok");
 
   const body = {
-    left_video_path,
-    sync_table_csv,
-    label_schema_json: label_schema_json ? label_schema_json : null
+    config_json_path: config_json_path
   };
 
   const res = await fetch(`/projects/${PID}/ingest_path`, {

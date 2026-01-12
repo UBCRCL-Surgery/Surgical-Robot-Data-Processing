@@ -8,6 +8,7 @@ from pathlib import Path
 import pandas as pd
 import cv2
 import subprocess
+import json
 
 
 def read_left_indices_and_ts(
@@ -182,10 +183,7 @@ def make_proxy_video(
 
 def main():
     ap = argparse.ArgumentParser(description="Extract left frames listed in sync_all.csv and build a proxy video for GUI.")
-    ap.add_argument("--sync_csv", required=True, help="sync table csv containing left_idx and timestamp column")
-    ap.add_argument("--video", required=True, help="original left video (mp4)")
-    ap.add_argument("--out_video", default="proxy_left.mp4")
-    ap.add_argument("--out_map", default="proxy_left_index_map.csv")
+    ap.add_argument("--config", required=True, help="Path to config.json")
     ap.add_argument("--idx_col", default="left_idx", help="column name for left indices")
     ap.add_argument("--ts_col", default="t_ref_s", help="timestamp column name (e.g., t_ref_s or left_t_s)")
     ap.add_argument("--fps", type=float, default=None, help="override FPS for proxy video (default: source fps)")
@@ -195,8 +193,17 @@ def main():
     ap.add_argument("--jpg_quality", type=int, default=95)
     args = ap.parse_args()
 
+    with open(args.config, "r", encoding="utf-8") as f:
+        cfg = json.load(f)
+
+    base_path = cfg.get("base_path", "")
+    sync_csv = os.path.join(base_path, cfg["sync_csv"])
+    video = os.path.join(base_path, cfg["video"])
+    out_video = os.path.join(base_path, cfg["out_video"])
+    out_map = os.path.join(base_path, cfg["out_map"])
+    
     left_indices, left_ts_s = read_left_indices_and_ts(
-        args.sync_csv,
+        sync_csv,
         idx_col=args.idx_col,
         ts_col=args.ts_col,
     )
@@ -209,11 +216,11 @@ def main():
         resize_wh = (int(w), int(h))
 
     make_proxy_video(
-        video_path=args.video,
+        video_path=video,
         left_indices=left_indices,
         left_ts_s=left_ts_s,
-        out_video=args.out_video,
-        out_map_csv=args.out_map,
+        out_video=out_video,
+        out_map_csv=out_map,
         out_frames_dir=args.frames_dir,
         fps_override=args.fps,
         resize_wh=resize_wh,

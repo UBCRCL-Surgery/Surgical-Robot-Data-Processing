@@ -24,6 +24,11 @@ The core libraries are fastapi and uvicorn. Feel free to add other libraries if 
 ```
 python ./sync_all.py --config ./data/example/mm_timestamp.json --out_csv ./data/example/sync_table_all.csv
 ```
+config file only version
+```
+python .\sync_all.py --config .\data\SurgMani\${TASK}\${NAME}\1\config.json
+```
+
 3. The output .csv file is the synchronized timestamps of all modalities.
 
 ## B. Trim Left Video Based on Sync Data
@@ -38,6 +43,10 @@ python ./trim_left_video.py --sync_csv [SYNC FILE PATH] --video [RAW LEFT VIDEO 
 For example:
 ```
 python ./trim_left_video.py --sync_csv ./data/example/sync_table_all.csv --video ./data/example/left_raw_video.mp4 --out_video ./data/example/proxy_left.mp4 --out_map ./data/example/proxy_left_index_map.csv --frames_dir ./data/example/proxy_left_frames --idx_col left_idx --ts_col t_ref_s
+```
+config file only version
+```
+python ./trim_left_video.py --config .\data\SurgMani\${TASK}\${NAME}\1\config.json
 ```
 
 If you do not need the extracted frames, remove --frames_dir [EXTRACT FRAMES DIR].

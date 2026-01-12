@@ -262,7 +262,6 @@ def build_dvapi_mod(name: str, dvapi_ts_s: np.ndarray) -> Modality:
 def main():
     ap = argparse.ArgumentParser(description="Sync left/right/side ISO + gaze TXT + dvapi CSV (dedup by api_cnt).")
     ap.add_argument("--config", required=True, help="Path to config.json")
-    ap.add_argument("--out_csv", default="sync_table.csv", help="Filtered sync table (kept left frames)")
     ap.add_argument("--out_full_debug", default="sync_table_full_debug.csv", help="Full tref table with err/valid flags (for QC)")
     ap.add_argument("--dvapi_dedup_csv", default="dvapi_dedup.csv", help="Output dedup dvapi table (one row per api_cnt)")
     ap.add_argument("--dvapi_aligned_csv", default="dvapi_aligned.csv", help="Output dvapi table aligned to kept frames (expanded per frame)")
@@ -276,13 +275,14 @@ def main():
 
     tz_name = cfg.get("timezone", "America/Vancouver")
 
-    left_path = cfg["left_ts"]
-    right_path = cfg["right_ts"]
-    side_path = cfg["side_ts"]
-    gaze_path = cfg["gaze_log"]
+    base_path = cfg.get("base_path", "")
+    left_path = os.path.join(base_path, cfg["left_ts"])
+    right_path = os.path.join(base_path, cfg["right_ts"])
+    side_path = os.path.join(base_path, cfg["side_ts"])
+    gaze_path = os.path.join(base_path, cfg["gaze_log"])
 
     # NEW: dvapi
-    dvapi_csv_path = cfg.get("dvapi_csv")
+    dvapi_csv_path = os.path.join(base_path, cfg["dvapi_csv"])
     if not dvapi_csv_path:
         raise ValueError("config.json missing 'dvapi_csv' path for dvapi data.")
 
@@ -422,8 +422,9 @@ def main():
         "dvapi_t_s",
     ]]
 
-    df_sync.to_csv(args.out_csv, index=False)
-    print(f"\nSaved filtered sync table: {args.out_csv}")
+    sync_csv = os.path.join(base_path, cfg["sync_csv"])
+    df_sync.to_csv(sync_csv, index=False)
+    print(f"\nSaved filtered sync table: {sync_csv}")
     print(f"Final kept rows: {len(df_sync)}")
 
     # Synced FPS (based on kept tref)
