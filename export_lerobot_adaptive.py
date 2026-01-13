@@ -455,10 +455,23 @@ def main():
 
         # Indices for each modality, 0-based frame indices into ORIGINAL videos
         # (Your sync_table_all_* uses columns left_idx/right_idx/side_idx/gaze_idx.)
-        left_idxs  = rows["left_idx"].astype(int).tolist()
-        right_idxs = rows["right_idx"].astype(int).tolist()
-        side_idxs  = rows["side_idx"].astype(int).tolist()
-        gaze_idxs  = rows["gaze_idx"].astype(int).tolist()
+        left_idxs = rows["left_idx"].astype(int).tolist()
+
+        right_idxs = (
+            rows["right_idx"].astype(int).tolist()
+            if args.right_video is not None else []
+        )
+
+        side_idxs = (
+            rows["side_idx"].astype(int).tolist()
+            if args.side_video is not None else []
+        )
+
+        gaze_idxs = (
+            rows["gaze_idx"].astype(int).tolist()
+            if args.gaze_video is not None else []
+        )
+
 
         # Encode videos (unified fps_ref)
         def _video_out(cam_key: str) -> Path:
@@ -475,16 +488,12 @@ def main():
         cam_gaze = "observation.images.gaze"
 
         w, h = _maybe_encode(args.left_video, left_frames_dir, left_idxs, cam_left)
-        print(w, h)
         video_shapes.setdefault(cam_left, (h, w))
         w, h = _maybe_encode(args.right_video, right_frames_dir, right_idxs, cam_right)
-        print(w, h)
         video_shapes.setdefault(cam_right, (h, w))
         w, h = _maybe_encode(args.side_video, side_frames_dir, side_idxs, cam_side)
-        print(w, h)
         video_shapes.setdefault(cam_side, (h, w))
         w, h = _maybe_encode(args.gaze_video, gaze_frames_dir, gaze_idxs, cam_gaze)
-        print(w, h)
         video_shapes.setdefault(cam_gaze, (h, w))
 
         total_videos += sum([
