@@ -222,7 +222,7 @@ def stats_for_array(x: np.ndarray) -> dict:
         "std": sd.tolist(),
     }
 
-def write_episode_parquet_pyarrow(out_parquet: Path, rows: List[dict], action_dim: int, state_dim: int) -> None:
+def write_episode_parquet_pyarrow(out_parquet, rows, action_dim, state_dim, video_keys):
     """Write episode parquet with an explicit schema to avoid scalar/0-d issues in LeRobot.
 
     - action and observation.state are stored as fixed_size_list<float32>[D]
@@ -269,10 +269,21 @@ def write_episode_parquet_pyarrow(out_parquet: Path, rows: List[dict], action_di
             fields=list(vf_type),
         )
 
-    left_arr = _vf("observation.images.left")
-    right_arr = _vf("observation.images.right")
-    side_arr = _vf("observation.images.side")
-    gaze_arr = _vf("observation.images.gaze")
+    arrays = []
+    fields = []
+
+    def add_vf(col):
+        arrays.append(_vf(col))
+        fields.append((col, vf_type))
+
+    add_vf("observation.images.left")
+
+    if "observation.images.right" in video_keys:
+        add_vf("observation.images.right")
+    if "observation.images.side" in video_keys:
+        add_vf("observation.images.side")
+    if "observation.images.gaze" in video_keys:
+        add_vf("observation.images.gaze")
 
     schema = pa.schema([
         ("index", pa.int64()),
@@ -283,20 +294,16 @@ def write_episode_parquet_pyarrow(out_parquet: Path, rows: List[dict], action_di
         ("next.done", pa.bool_()),
         ("action", pa.list_(pa.float32(), list_size=action_dim)),
         ("observation.state", pa.list_(pa.float32(), list_size=state_dim)),
-        ("observation.images.left", vf_type),
-        ("observation.images.right", vf_type),
-        ("observation.images.side", vf_type),
-        ("observation.images.gaze", vf_type),
-    ])
+    ] + fields)
 
     table = pa.Table.from_arrays(
         [
             index_arr, episode_index_arr, frame_index_arr, timestamp_arr,
             task_index_arr, done_arr, action_arr, state_arr,
-            left_arr, right_arr, side_arr, gaze_arr
-        ],
+        ] + arrays,
         schema=schema,
     )
+
     pq.write_table(table, out_parquet, compression="zstd")
 
 def safe_float_timestamp_series(ts: np.ndarray) -> np.ndarray:
@@ -527,20 +534,26 @@ def main():
                 rel = Path("videos") / "chunk-000" / cam_key / f"episode_{episode_index:06d}.mp4"
                 return {"path": str(rel.as_posix()), "timestamp": t}
 
-            parquet_rows.append({
+            row = {
                 "index": int(global_index),
                 "episode_index": int(episode_index),
                 "frame_index": int(i),
-                "timestamp": t,                 # ✅
+                "timestamp": t,
                 "task_index": int(task_index),
                 "next.done": bool(done),
                 "action": action[i].tolist(),
                 "observation.state": state[i].tolist(),
                 cam_left: vf(cam_left, args.left_video is not None),
-                cam_right: vf(cam_right, args.right_video is not None),
-                cam_side: vf(cam_side, args.side_video is not None),
-                cam_gaze: vf(cam_gaze, args.gaze_video is not None),
-            })
+            }
+
+            if args.right_video is not None:
+                row[cam_right] = vf(cam_right, True)
+            if args.side_video is not None:
+                row[cam_side] = vf(cam_side, True)
+            if args.gaze_video is not None:
+                row[cam_gaze] = vf(cam_gaze, True)
+
+            parquet_rows.append(row)
 
             global_index += 1
 
@@ -549,7 +562,23 @@ def main():
 
         # Write parquet
         out_parquet = data_dir / f"episode_{episode_index:06d}.parquet"
-        write_episode_parquet_pyarrow(out_parquet, parquet_rows, args.action_dim, args.state_dim)
+
+        video_keys = ["observation.images.left"]
+        if args.right_video is not None:
+            video_keys.append("observation.images.right")
+        if args.side_video is not None:
+            video_keys.append("observation.images.side")
+        if args.gaze_video is not None:
+            video_keys.append("observation.images.gaze")
+
+        write_episode_parquet_pyarrow(
+            out_parquet,
+            parquet_rows,
+            args.action_dim,
+            args.state_dim,
+            video_keys,
+        )
+
         # df_parquet = pd.DataFrame(parquet_rows)
         # df_parquet.to_parquet(out_parquet, index=False, engine="pyarrow")
 
@@ -589,9 +618,12 @@ def main():
     }
 
     for cam_key, (h, w) in video_shapes.items():
+        if cam_key not in video_keys:
+            continue   # missed modality, skip
+
         if h <= 0 or w <= 0:
-            # fallback
             h, w = 480, 640
+
         features[cam_key] = {
             "dtype": "video",
             "shape": [int(h), int(w), 3],
@@ -601,6 +633,7 @@ def main():
                 "video.codec": "mp4",
             },
         }
+
 
     info = {
         "codebase_version": "v2.1",
