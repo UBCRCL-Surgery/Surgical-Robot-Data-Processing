@@ -342,15 +342,9 @@ def build_episodes(df_ep: pd.DataFrame) -> List[EpisodeSpec]:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--sync-all", type=Path, required=True, help="sync_table_all_*.csv")
-    ap.add_argument("--sync-ep", type=Path, required=True, help="GUI exported sync_table.csv")
-    ap.add_argument("--left-video", type=Path, required=True)
-    ap.add_argument("--right-video", type=Path, required=True)
-    ap.add_argument("--side-video", type=Path, required=True)
-    ap.add_argument("--gaze-video", type=Path, required=True)
-
-    ap.add_argument("--out", type=Path, required=True, help="output dataset root folder")
+    ap.add_argument("--config", type=Path, required=True, help="config.json")
     ap.add_argument("--dataset-name", type=str, default="dataset")
+
     ap.add_argument("--profile", choices=["public", "internal"], default="public")
     ap.add_argument("--cache-dir", type=Path, default=None, help="where to store extracted frames cache (default: <out>/.frame_cache)")
     ap.add_argument("--fps-mode", choices=["from_timestamps", "fixed"], default="from_timestamps")
@@ -368,8 +362,30 @@ def main():
     # action/state dims (for placeholder)
     ap.add_argument("--action-dim", type=int, default=1)
     ap.add_argument("--state-dim", type=int, default=1)
-
     args = ap.parse_args()
+
+
+    # TODO: instead of using the above arguments, use the config.json
+    # ap.add_argument("--sync-all", type=Path, required=True, help="sync_table_all_*.csv")
+    # ap.add_argument("--sync-ep", type=Path, required=True, help="GUI exported sync_table.csv")
+    # ap.add_argument("--left-video", type=Path, required=True)
+    # ap.add_argument("--right-video", type=Path, required=True)
+    # ap.add_argument("--side-video", type=Path, required=True)
+    # ap.add_argument("--gaze-video", type=Path, required=True)
+    # ap.add_argument("--out", type=Path, required=True, help="output dataset root folder")
+
+    with open(args.config, "r", encoding="utf-8") as f:
+        cfg = json.load(f)
+        dataset_name = cfg.get("dataset_name", args.dataset_name)
+        base_path = cfg.get("base_path", "")
+        sync_all_file = Path(os.path.join(base_path, "sync_table_all.csv"))
+        sync_ep_file = Path(f"D://dataset//Surgical-Robot-Data-Processing//data//projects//{dataset_name}//index//sync_table.csv")
+        left_video_path = Path(os.path.join(base_path, cfg["left_video"]))
+        right_video_path = Path(os.path.join(base_path, cfg["right_video"]))
+        side_video_path = Path(os.path.join(base_path, "side_camera/output.mp4"))
+        gaze_video_path = Path(os.path.join(base_path, cfg["gaze_video"]))
+        out_dir = Path(base_path)
+
 
     # LeRobot (video_backend="pytorch") is most reliable with H.264 (libx264) MP4.
     if not ffmpeg_has_encoder("libx264"):
@@ -378,7 +394,7 @@ def main():
             "(e.g., conda install -c conda-forge ffmpeg) and re-run."
         )
 
-    out_root = args.out / args.dataset_name
+    out_root = out_dir / dataset_name
     data_dir = out_root / "data" / "chunk-000"
     videos_root = out_root / "videos" / "chunk-000"
     meta_dir = out_root / "meta"
@@ -391,8 +407,8 @@ def main():
     cache_dir.mkdir(parents=True, exist_ok=True)
 
     # Load CSVs
-    df_all = pd.read_csv(args.sync_all)
-    df_ep  = pd.read_csv(args.sync_ep)
+    df_all = pd.read_csv(sync_all_file)
+    df_ep  = pd.read_csv(sync_ep_file)
 
     # Merge episode rows with sync_all by row index (preferred) else by left_idx
     if "row_idx" in df_ep.columns and "row_idx" in df_all.columns:
@@ -410,10 +426,14 @@ def main():
     side_frames_dir  = cache_dir / "side_frames"
     gaze_frames_dir  = cache_dir / "gaze_frames"
 
-    extract_all_frames(args.left_video, left_frames_dir)
-    extract_all_frames(args.right_video, right_frames_dir)
-    extract_all_frames(args.side_video, side_frames_dir)
-    extract_all_frames(args.gaze_video, gaze_frames_dir)
+    print("Extracting frames: from", left_video_path, "to", left_frames_dir)
+    extract_all_frames(left_video_path, left_frames_dir)
+    print("Extracting frames: from", right_video_path, "to", right_frames_dir)
+    extract_all_frames(right_video_path, right_frames_dir)
+    print("Extracting frames: from", side_video_path, "to", side_frames_dir)
+    extract_all_frames(side_video_path, side_frames_dir)
+    print("Extracting frames: from", gaze_video_path, "to", gaze_frames_dir)
+    extract_all_frames(gaze_video_path, gaze_frames_dir)
 
     # Determine output FPS (unified for all episode videos)
     # We default to using GUI timestamps (absolute unix seconds) -> infer median dt.
@@ -421,7 +441,7 @@ def main():
     if args.fps_mode == "fixed":
         fps_ref = float(args.fixed_fps)
     else:
-        ts = pd.to_numeric(merged["timestamp"], errors="coerce").dropna().to_numpy(dtype=np.float64)
+        ts = pd.to_numeric(merged["t_ref_s"], errors="coerce").dropna().to_numpy(dtype=np.float64)
         # If timestamp is unix seconds and consecutive, dt median works.
         dts = np.diff(ts)
         dts = dts[np.isfinite(dts) & (dts > 0)]
@@ -450,7 +470,8 @@ def main():
     total_videos = 0
 
     # Create per-episode parquet + videos
-    for episode_index, ep in enumerate(episodes):
+    import tqdm
+    for episode_index, ep in tqdm.tqdm(enumerate(episodes), total=len(episodes), desc="Creating per-episode parquet + videos"):
         rows = ep.rows.copy()
 
         # Indices for each modality, 0-based frame indices into ORIGINAL videos
@@ -470,16 +491,12 @@ def main():
         cam_gaze = "observation.images.gaze"
 
         w, h = make_episode_video_from_frames(left_frames_dir, left_idxs, _video_out(cam_left), fps_ref, tuple(args.image_size))
-        print(w, h)
         video_shapes.setdefault(cam_left, (h, w))
         w, h = make_episode_video_from_frames(right_frames_dir, right_idxs, _video_out(cam_right), fps_ref, tuple(args.image_size))
-        print(w, h)
         video_shapes.setdefault(cam_right, (h, w))
         w, h = make_episode_video_from_frames(side_frames_dir, side_idxs, _video_out(cam_side), fps_ref, tuple(args.image_size))
-        print(w, h)
         video_shapes.setdefault(cam_side, (h, w))
         w, h = make_episode_video_from_frames(gaze_frames_dir, gaze_idxs, _video_out(cam_gaze), fps_ref, tuple(args.image_size))
-        print(w, h)
         video_shapes.setdefault(cam_gaze, (h, w))
 
         total_videos += 4
@@ -605,7 +622,7 @@ def main():
 
     # Top-level README (optional but helpful)
     (out_root / "README.md").write_text(
-        f"# {args.dataset_name}\n\n"
+        f"# {dataset_name}\n\n"
         "LeRobot v2.1 dataset exported from Open-H GUI episode labels.\n",
         encoding="utf-8"
     )
@@ -613,7 +630,8 @@ def main():
     print("\n✅ Export complete.")
     print(f"Dataset written to: {out_root}")
     print("\nNow validate:")
-    print(f"  python /path/to/validate_formatting.py {out_root}\n")
+    file_path = os.path.join(os.path.dirname(__file__), "validate_formatting.py")
+    print(f"  python {file_path} {out_root}\n")
 
 
 if __name__ == "__main__":

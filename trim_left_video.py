@@ -198,7 +198,7 @@ def main():
 
     base_path = cfg.get("base_path", "")
     sync_csv = os.path.join(base_path, cfg["sync_csv"])
-    video = os.path.join(base_path, cfg["video"])
+    video = os.path.join(base_path, cfg["left_video"])
     out_video = os.path.join(base_path, cfg["out_video"])
     out_map = os.path.join(base_path, cfg["out_map"])
     

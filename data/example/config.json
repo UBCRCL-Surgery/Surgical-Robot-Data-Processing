@@ -1,12 +1,15 @@
 {
   "timezone": "America/Vancouver",
-  "base_path": "D:/dataset/Surgical-Robot-Data-Processing/data/SurgMani/KnotTying/PaulLee/1/",
-  "left_ts": "endo/video_stream_2_20251229_145903_timestamps.txt",
-  "right_ts": "endo/video_stream_1_20251229_145903_timestamps.txt",
-  "gaze_log": "gaze/gazelog_29-12-2025_14-58-42.txt",
-  "dvapi_csv": "data_local_part_1_29_12_2025_14_58_47.csv",
-  "video": "endo/video_stream_2_20251229_145903.mp4",
-  
+  "base_path": "D:/dataset/Surgical-Robot-Data-Processing/data/SurgMani/KnotTying/ChristopherNguan/1/",
+  "left_ts": "endo/video_stream_2_20251211_134940_timestamps.txt",
+  "right_ts": "endo/video_stream_1_20251211_134940_timestamps.txt",
+  "left_video": "endo/video_stream_2_20251211_134940.mp4",
+  "right_video": "endo/video_stream_1_20251211_134940.mp4",
+
+  "gaze_log": "gaze/gazelog_11-12-2025_13-49-14.txt",
+  "gaze_video": "gaze/eyeVideo_12-11-2025_13-49-14.avi",
+  "dvapi_csv": "data_local_part_1_11_12_2025_13_49_21.csv",
+
   "side_ts": "side_camera/output_timestamps.txt",
   "sync_csv": "sync_table_all.csv",
   "out_video": "left_trimmed.mp4",

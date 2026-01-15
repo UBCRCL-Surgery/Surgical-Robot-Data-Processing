@@ -428,7 +428,7 @@ def main():
     if args.fps_mode == "fixed":
         fps_ref = float(args.fixed_fps)
     else:
-        ts = pd.to_numeric(merged["timestamp"], errors="coerce").dropna().to_numpy(dtype=np.float64)
+        ts = pd.to_numeric(merged["t_ref_s"], errors="coerce").dropna().to_numpy(dtype=np.float64)
         # If timestamp is unix seconds and consecutive, dt median works.
         dts = np.diff(ts)
         dts = dts[np.isfinite(dts) & (dts > 0)]
