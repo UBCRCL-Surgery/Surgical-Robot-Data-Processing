@@ -112,9 +112,9 @@ def ffprobe_fps(video_path: Path) -> float:
         return float(num) / float(den)
     return float(rate)
 
-def extract_all_frames(video_path: Path, frames_dir: Path) -> None:
+def extract_all_frames(video_path: Path, frames_dir: Path, start_number: int = 0) -> None:
     """
-    Extract all frames once, cached on disk. Output naming starts at 0.
+    Extract all frames once, cached on disk. Output naming starts at start_number.
 
     frames_dir/frame_000000.png
     frames_dir/frame_000001.png
@@ -122,18 +122,19 @@ def extract_all_frames(video_path: Path, frames_dir: Path) -> None:
     """
     frames_dir.mkdir(parents=True, exist_ok=True)
     # If already extracted, skip (simple heuristic)
-    sample = frames_dir / "frame_000000.png"
+    sample = frames_dir / f"frame_{start_number:06d}.png"
     if sample.exists():
-        return
+        return len(list(frames_dir.iterdir()))
 
     cmd = [
         "ffmpeg", "-hide_banner", "-loglevel", "error",
         "-i", str(video_path),
-        "-start_number", "0",
+        "-start_number", str(start_number),
         "-vsync", "0",
         str(frames_dir / "frame_%06d.png"),
     ]
     _run(cmd)
+    return start_number + len(list(frames_dir.iterdir()))
 
 def make_episode_video_from_frames(frames_in_dir: Path, frame_indices: List[int], out_mp4: Path, fps: float, image_size: Tuple[int, int]=(256, 256)) -> Tuple[int, int]:
     """
@@ -433,8 +434,14 @@ def main():
     print("Extracting frames: from", side_video_path, "to", side_frames_dir)
     extract_all_frames(side_video_path, side_frames_dir)
     print("Extracting frames: from", gaze_video_path, "to", gaze_frames_dir)
-    extract_all_frames(gaze_video_path, gaze_frames_dir)
-
+    gaze2_start_number = extract_all_frames(gaze_video_path, gaze_frames_dir)
+    # if another gaze video exists, extract frames from it
+    # eg. eyeVideo_12-29-2025_16-09-57.avi and eyeVideo_12-29-2025_16-09-57.av_2.avi
+    gaze2_video_path = gaze_video_path.with_name(gaze_video_path.stem + ".av_2.avi")
+    if gaze2_video_path.exists():
+        print("Extracting frames: from", gaze2_video_path, "to", gaze_frames_dir)
+        extract_all_frames(gaze2_video_path, gaze_frames_dir, start_number=gaze2_start_number)
+    
     # Determine output FPS (unified for all episode videos)
     # We default to using GUI timestamps (absolute unix seconds) -> infer median dt.
     # Then you can override with --fixed-fps.
