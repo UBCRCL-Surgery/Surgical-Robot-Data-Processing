@@ -1,19 +1,18 @@
 {
   "timezone": "America/Vancouver",
-  "base_path": "D:/dataset/Surgical-Robot-Data-Processing/data/SurgMani/KnotTying/ChristopherNguan/1/",
-  "left_ts": "endo/video_stream_2_20251211_134940_timestamps.txt",
-  "right_ts": "endo/video_stream_1_20251211_134940_timestamps.txt",
-  "left_video": "endo/video_stream_2_20251211_134940.mp4",
-  "right_video": "endo/video_stream_1_20251211_134940.mp4",
-
-  "gaze_log": "gaze/gazelog_11-12-2025_13-49-14.txt",
-  "gaze_video": "gaze/eyeVideo_12-11-2025_13-49-14.avi",
-  "dvapi_csv": "data_local_part_1_11_12_2025_13_49_21.csv",
-
+  "base_path": "D:/dataset/Surgical-Robot-Data-Processing/data/SurgMani/KnotTying/${NAME}/{NUM}/",
+  "left_ts": "endo/video_stream_2_{YYYYMMDD}_{HHMMSS}_timestamps.txt",
+  "right_ts": "endo/video_stream_1_{YYYYMMDD}_{HHMMSS}_timestamps.txt",
+  "left_video": "endo/video_stream_2_{YYYYMMDD}_{HHMMSS}.mp4",
+  "right_video": "endo/video_stream_1_{YYYYMMDD}_{HHMMSS}.mp4",
+  "gaze_log": "gaze/gazelog_{DD}-{MM}-{YYYY}_{HH}-{MM}-{SS}.txt",
+  "gaze_video": "gaze/eyeVideo_{DD}-{MM}-{YYYY}_{HH}-{MM}-{SS}.avi",
+  "dvapi_csv": "data_local_part_1_{DD}_{MM}_{YYYY}_{HH}_{MM}_{SS}.csv",
   "side_ts": "side_camera/output_timestamps.txt",
   "sync_csv": "sync_table_all.csv",
   "out_video": "left_trimmed.mp4",
   "out_video_h264": "left_trimmed_h264.mp4",
   "out_map": "proxy_left_index_map.csv",
-  "label_schema": "D:/dataset/Surgical-Robot-Data-Processing/data/projects/label.json"
+  "label_schema": "D:/dataset/Surgical-Robot-Data-Processing/data/projects/label.json",
+  "dataset_name": "1234567890"
 }
