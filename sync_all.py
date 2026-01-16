@@ -205,7 +205,7 @@ def read_dvapi_csv_dedup_by_api_cnt(dvapi_csv_path: str) -> Tuple[pd.DataFrame, 
       fps_raw: estimated FPS from raw (non-dedup) timestamps (median dt)
       fps_dedup: estimated FPS from dedup (median dt)
     """
-    df = pd.read_csv(dvapi_csv_path)
+    df = pd.read_csv(dvapi_csv_path, engine="python", on_bad_lines="skip")
 
     if "Time_stamp" not in df.columns or "api_cnt" not in df.columns:
         raise ValueError(f"DVAPI csv must contain 'Time_stamp' and 'api_cnt'. Columns: {list(df.columns)}")
