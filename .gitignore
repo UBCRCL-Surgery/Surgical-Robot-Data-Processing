@@ -10,3 +10,4 @@ example_/
 *.mp4
 *.csv
 **/.frame_cache/
+export/
