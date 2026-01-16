@@ -682,7 +682,12 @@ def export_project(project_id: str):
 
     with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         add_if_exists(zf, pdir / "metadata.json")
-        add_if_exists(zf, pdir / "index" / "sync_table.csv")
+        sync_src = pdir / "index" / "sync_table.csv"
+        if sync_src.exists():
+            zf.write(
+                sync_src,
+                arcname=f"index/sync_table_{project_id}.csv"
+            )
         add_if_exists(zf, pdir / "index" / "label_schema.json")
         for f in sorted((pdir / "episodes").glob("*.json")):
             add_if_exists(zf, f)
