@@ -470,16 +470,12 @@ def main():
         cam_gaze = "observation.images.gaze"
 
         w, h = make_episode_video_from_frames(left_frames_dir, left_idxs, _video_out(cam_left), fps_ref, tuple(args.image_size))
-        print(w, h)
         video_shapes.setdefault(cam_left, (h, w))
         w, h = make_episode_video_from_frames(right_frames_dir, right_idxs, _video_out(cam_right), fps_ref, tuple(args.image_size))
-        print(w, h)
         video_shapes.setdefault(cam_right, (h, w))
         w, h = make_episode_video_from_frames(side_frames_dir, side_idxs, _video_out(cam_side), fps_ref, tuple(args.image_size))
-        print(w, h)
         video_shapes.setdefault(cam_side, (h, w))
         w, h = make_episode_video_from_frames(gaze_frames_dir, gaze_idxs, _video_out(cam_gaze), fps_ref, tuple(args.image_size))
-        print(w, h)
         video_shapes.setdefault(cam_gaze, (h, w))
 
         total_videos += 4
@@ -609,6 +605,9 @@ def main():
         "LeRobot v2.1 dataset exported from Open-H GUI episode labels.\n",
         encoding="utf-8"
     )
+
+    # delete cache
+    shutil.rmtree(cache_dir)
 
     print("\n✅ Export complete.")
     print(f"Dataset written to: {out_root}")

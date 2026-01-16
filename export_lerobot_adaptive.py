@@ -474,10 +474,19 @@ def main():
             if args.side_video is not None else []
         )
 
-        gaze_idxs = (
-            rows["gaze_idx"].astype(int).tolist()
-            if args.gaze_video is not None else []
-        )
+        # gaze_idxs = (
+        #     rows["gaze_idx"].astype(int).tolist()
+        #     if args.gaze_video is not None else []
+        # )
+        if args.gaze_video is not None and "gaze_idx" in rows.columns:
+            gaze_col = rows["gaze_idx"]
+            if gaze_col.isna().all():
+                gaze_idxs = []
+            else:
+                gaze_idxs = gaze_col.dropna().astype(int).tolist()
+        else:
+            gaze_idxs = []
+
 
 
         # Encode videos (unified fps_ref)
@@ -485,7 +494,7 @@ def main():
             return videos_root / cam_key / f"episode_{episode_index:06d}.mp4"
 
         def _maybe_encode(video_path, frames_dir, idxs, cam_key):
-            if video_path is None:
+            if video_path is None or not idxs:
                 return (0,0)
             return make_episode_video_from_frames(frames_dir, idxs, _video_out(cam_key), fps_ref, tuple(args.image_size))
 
@@ -663,6 +672,9 @@ def main():
         "LeRobot v2.1 dataset exported from Open-H GUI episode labels.\n",
         encoding="utf-8"
     )
+
+    # delete cache
+    shutil.rmtree(cache_dir)
 
     print("\n✅ Export complete.")
     print(f"Dataset written to: {out_root}")
