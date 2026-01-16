@@ -6,7 +6,7 @@ import json
 import os
 import re
 from dataclasses import dataclass
-from typing import Optional, Tuple, Dict
+from typing import Optional, Tuple, Dict, List
 
 import numpy as np
 import pandas as pd
@@ -42,6 +42,7 @@ def robust_median_dt(ts_s: np.ndarray) -> float:
     dt = np.diff(ts)
     dt = dt[(dt > 0) & np.isfinite(dt)]
     if dt.size == 0:
+        breakpoint()
         raise ValueError("No positive dt found; timestamps might be constant/invalid.")
     return float(np.median(dt))
 
@@ -194,7 +195,7 @@ def build_gaze_mod_from_txt(name: str, gaze_path: str) -> Modality:
 # Read DVAPI CSV (epoch-us) and dedup by api_cnt
 # -------------------------
 
-def read_dvapi_csv_dedup_by_api_cnt(dvapi_csv_path: str) -> Tuple[pd.DataFrame, np.ndarray, float, float]:
+def read_dvapi_csv_dedup_by_api_cnt(dvapi_csv_paths: List[str]) -> Tuple[pd.DataFrame, np.ndarray, float, float]:
     """
     Reads dvapi csv, expects:
       - Time_stamp: epoch microseconds (int-like)
@@ -205,7 +206,15 @@ def read_dvapi_csv_dedup_by_api_cnt(dvapi_csv_path: str) -> Tuple[pd.DataFrame, 
       fps_raw: estimated FPS from raw (non-dedup) timestamps (median dt)
       fps_dedup: estimated FPS from dedup (median dt)
     """
-    df = pd.read_csv(dvapi_csv_path)
+    df = None
+    for dvapi_csv_path in dvapi_csv_paths:
+        df_sub = pd.read_csv(dvapi_csv_path)
+        if df_sub is None:
+            raise ValueError(f"DVAPI csv is empty: {dvapi_csv_path}")
+        if df is None:
+            df = df_sub
+        else:
+            df = pd.concat([df, df_sub], ignore_index=True)
 
     if "Time_stamp" not in df.columns or "api_cnt" not in df.columns:
         raise ValueError(f"DVAPI csv must contain 'Time_stamp' and 'api_cnt'. Columns: {list(df.columns)}")
@@ -218,19 +227,19 @@ def read_dvapi_csv_dedup_by_api_cnt(dvapi_csv_path: str) -> Tuple[pd.DataFrame, 
     fps_raw = float(1.0 / np.median(dt_raw)) if dt_raw.size > 0 else 0.0
 
     # drop rows without api_cnt
-    d = df.dropna(subset=["api_cnt"]).copy()
-    d["api_cnt"] = pd.to_numeric(d["api_cnt"], errors="coerce").astype("Int64")
-    d = d.dropna(subset=["api_cnt"])
-    d["api_cnt"] = d["api_cnt"].astype(np.int64)
+    df_tmp = df.dropna(subset=["api_cnt"]).copy()
+    df_tmp["api_cnt"] = pd.to_numeric(df_tmp["api_cnt"], errors="coerce").astype("Int64")
+    df_tmp = df_tmp.dropna(subset=["api_cnt"])
+    df_tmp["api_cnt"] = df_tmp["api_cnt"].astype(np.int64)
 
     # parse timestamp as int64 (epoch-us). keep numeric for ordering
-    d["Time_stamp"] = pd.to_numeric(d["Time_stamp"], errors="coerce").astype("Int64")
-    d = d.dropna(subset=["Time_stamp"])
-    d["Time_stamp"] = d["Time_stamp"].astype(np.int64)
+    df_tmp["Time_stamp"] = pd.to_numeric(df_tmp["Time_stamp"], errors="coerce").astype("Int64")
+    df_tmp = df_tmp.dropna(subset=["Time_stamp"])
+    df_tmp["Time_stamp"] = df_tmp["Time_stamp"].astype(np.int64)
 
     # Dedup: one row per api_cnt.
     # choose the FIRST timestamp for each api_cnt (and all other fields from that row)
-    d_sorted = d.sort_values(["api_cnt", "Time_stamp"], kind="mergesort")
+    d_sorted = df_tmp.sort_values(["api_cnt", "Time_stamp"], kind="mergesort")
     dedup = d_sorted.groupby("api_cnt", as_index=False).first()
 
     # Compute dedup fps
@@ -282,10 +291,11 @@ def main():
     gaze_path = os.path.join(base_path, cfg["gaze_log"])
 
     # NEW: dvapi
-    dvapi_csv_path = os.path.join(base_path, cfg["dvapi_csv"])
-    if not dvapi_csv_path:
-        raise ValueError("config.json missing 'dvapi_csv' path for dvapi data.")
-
+    # check if is list cfg["dvapi_csv"] is list
+    if isinstance(cfg["dvapi_csv"], list):
+        dvapi_csv_paths = [os.path.join(base_path, path) for path in cfg["dvapi_csv"]]
+    else:
+        dvapi_csv_paths = [os.path.join(base_path, cfg["dvapi_csv"])]
     left_col = cfg.get("left_col")
     right_col = cfg.get("right_col")
     side_col = cfg.get("side_col")
@@ -301,7 +311,7 @@ def main():
     gaze = build_gaze_mod_from_txt("gaze", gaze_path)
 
     # Read dvapi and dedup
-    dvapi_dedup_df, dvapi_ts_s, dvapi_fps_raw, dvapi_fps_dedup = read_dvapi_csv_dedup_by_api_cnt(dvapi_csv_path)
+    dvapi_dedup_df, dvapi_ts_s, dvapi_fps_raw, dvapi_fps_dedup = read_dvapi_csv_dedup_by_api_cnt(dvapi_csv_paths)
     dvapi = build_dvapi_mod("dvapi", dvapi_ts_s)
 
     print("=== DVAPI FPS estimate ===")

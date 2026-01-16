@@ -7,7 +7,7 @@
   "right_video": "endo/video_stream_1_{YYYYMMDD}_{HHMMSS}.mp4",
   "gaze_log": "gaze/gazelog_{DD}-{MM}-{YYYY}_{HH}-{MM}-{SS}.txt",
   "gaze_video": "gaze/eyeVideo_{DD}-{MM}-{YYYY}_{HH}-{MM}-{SS}.avi",
-  "dvapi_csv": "data_local_part_1_{DD}_{MM}_{YYYY}_{HH}_{MM}_{SS}.csv",
+  "dvapi_csv": ["data_local_part_1_{DD}_{MM}_{YYYY}_{HH}_{MM}_{SS}.csv", "data_local_part_2_{DD}_{MM}_{YYYY}_{HH}_{MM}_{SS}.csv"],
   "side_ts": "side_camera/output_timestamps.txt",
   "sync_csv": "sync_table_all.csv",
   "out_video": "left_trimmed.mp4",
