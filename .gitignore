@@ -12,3 +12,7 @@ example_/
 SurgMani
 .gradio*
 **/.frame_cache/
+.idea
+
+data/KnotTying
+data/Suturing
