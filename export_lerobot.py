@@ -373,6 +373,56 @@ def safe_float_timestamp_series(ts: np.ndarray) -> np.ndarray:
     return ts
 
 
+def read_dvapi_csv_dedup_by_api_cnt(dvapi_csv_paths: List[Path]) -> pd.DataFrame:
+    """
+    Read one or more DVAPI CSVs and create the same deduped table used by sync:
+    one row per api_cnt, using the first timestamp row in each api_cnt group,
+    then sorted by Time_stamp.
+
+    The returned table keeps the original DVAPI CSV columns.
+    Its row order index (0..N-1) corresponds to sync_table_all.csv `dvapi_row`.
+    """
+    df = None
+    for dvapi_csv_path in dvapi_csv_paths:
+        if not dvapi_csv_path.exists():
+            raise FileNotFoundError(f"DVAPI csv not found: {dvapi_csv_path}")
+        df_sub = pd.read_csv(dvapi_csv_path)
+        if df_sub is None or df_sub.empty:
+            raise ValueError(f"DVAPI csv is empty: {dvapi_csv_path}")
+        if df is None:
+            df = df_sub
+        else:
+            df = pd.concat([df, df_sub], ignore_index=True)
+
+    if df is None or df.empty:
+        raise ValueError("No DVAPI data loaded from dvapi_csv paths.")
+
+    if "Time_stamp" not in df.columns or "api_cnt" not in df.columns:
+        raise ValueError(
+            "DVAPI csv must contain 'Time_stamp' and 'api_cnt'. "
+            f"Columns: {list(df.columns)}"
+        )
+
+    df_tmp = df.dropna(subset=["api_cnt"]).copy()
+    df_tmp["api_cnt"] = pd.to_numeric(df_tmp["api_cnt"], errors="coerce").astype(
+        "Int64"
+    )
+    df_tmp = df_tmp.dropna(subset=["api_cnt"])
+    df_tmp["api_cnt"] = df_tmp["api_cnt"].astype(np.int64)
+
+    df_tmp["Time_stamp"] = pd.to_numeric(df_tmp["Time_stamp"], errors="coerce").astype(
+        "Int64"
+    )
+    df_tmp = df_tmp.dropna(subset=["Time_stamp"])
+    df_tmp["Time_stamp"] = df_tmp["Time_stamp"].astype(np.int64)
+
+    # One row per api_cnt; keep the earliest timestamp row for each api_cnt.
+    d_sorted = df_tmp.sort_values(["api_cnt", "Time_stamp"], kind="mergesort")
+    dedup = d_sorted.groupby("api_cnt", as_index=False).first()
+    dedup = dedup.sort_values("Time_stamp", kind="mergesort").reset_index(drop=True)
+    return dedup
+
+
 @dataclass
 class EpisodeSpec:
     episode_id: str
@@ -440,6 +490,14 @@ def main():
     # action/state dims (for placeholder)
     ap.add_argument("--action-dim", type=int, default=1)
     ap.add_argument("--state-dim", type=int, default=1)
+    ap.add_argument(
+        "--dvapi-only",
+        action="store_true",
+        help=(
+            "Only export/update per-episode DVAPI CSV chunks under robot/chunk-000; "
+            "skip video/parquet/meta export."
+        ),
+    )
     args = ap.parse_args()
 
     # TODO: instead of using the above arguments, use the config.json
@@ -472,9 +530,29 @@ def main():
         side_video_path = Path(os.path.join(base_path, "side_camera/output.mp4"))
         gaze_video_path = Path(os.path.join(base_path, cfg["gaze_video"]))
         out_dir = Path(base_path)
+        dvapi_csv_cfg = cfg.get("dvapi_csv", [])
+        if isinstance(dvapi_csv_cfg, list):
+            dvapi_csv_paths = [
+                (
+                    Path(path)
+                    if Path(path).is_absolute()
+                    else Path(os.path.join(base_path, path))
+                )
+                for path in dvapi_csv_cfg
+            ]
+        elif dvapi_csv_cfg:
+            dvapi_csv_paths = [
+                (
+                    Path(dvapi_csv_cfg)
+                    if Path(dvapi_csv_cfg).is_absolute()
+                    else Path(os.path.join(base_path, dvapi_csv_cfg))
+                )
+            ]
+        else:
+            dvapi_csv_paths = []
 
     # LeRobot (video_backend="pytorch") is most reliable with H.264 (libx264) MP4.
-    if not ffmpeg_has_encoder("libx264"):
+    if not args.dvapi_only and not ffmpeg_has_encoder("libx264"):
         raise RuntimeError(
             "ffmpeg encoder 'libx264' not found. Please install an ffmpeg build with libx264 "
             "(e.g., conda install -c conda-forge ffmpeg) and re-run."
@@ -483,14 +561,16 @@ def main():
     out_root = out_dir / dataset_name
     data_dir = out_root / "data" / "chunk-000"
     videos_root = out_root / "videos" / "chunk-000"
+    robot_dir = out_root / "robot" / "chunk-000"
     meta_dir = out_root / "meta"
 
     out_root.mkdir(parents=True, exist_ok=True)
-    data_dir.mkdir(parents=True, exist_ok=True)
-    meta_dir.mkdir(parents=True, exist_ok=True)
-
-    cache_dir = args.cache_dir or (out_root / ".frame_cache")
-    cache_dir.mkdir(parents=True, exist_ok=True)
+    robot_dir.mkdir(parents=True, exist_ok=True)
+    if not args.dvapi_only:
+        data_dir.mkdir(parents=True, exist_ok=True)
+        meta_dir.mkdir(parents=True, exist_ok=True)
+        cache_dir = args.cache_dir or (out_root / ".frame_cache")
+        cache_dir.mkdir(parents=True, exist_ok=True)
 
     # Load CSVs
     df_all = pd.read_csv(sync_all_file)
@@ -506,69 +586,80 @@ def main():
     if not episodes:
         raise RuntimeError("No labeled episodes found (episode_id != -1).")
 
-    # Extract all frames once per modality (cache)
-    left_frames_dir = cache_dir / "left_frames"
-    right_frames_dir = cache_dir / "right_frames"
-    side_frames_dir = cache_dir / "side_frames"
-    gaze_frames_dir = cache_dir / "gaze_frames"
-
-    print("Extracting frames: from", left_video_path, "to", left_frames_dir)
-    extract_all_frames(left_video_path, left_frames_dir)
-    print("Extracting frames: from", right_video_path, "to", right_frames_dir)
-    extract_all_frames(right_video_path, right_frames_dir)
-    print("Extracting frames: from", side_video_path, "to", side_frames_dir)
-    extract_all_frames(side_video_path, side_frames_dir)
-    print("Extracting frames: from", gaze_video_path, "to", gaze_frames_dir)
-    gaze2_start_number = extract_all_frames(gaze_video_path, gaze_frames_dir)
-    # if another gaze video exists, extract frames from it
-    # eg. eyeVideo_12-29-2025_16-09-57.avi and eyeVideo_12-29-2025_16-09-57.av_2.avi
-    gaze2_video_path = gaze_video_path.with_name(gaze_video_path.stem + ".av_2.avi")
-    if gaze2_video_path.exists():
-        print("Extracting frames: from", gaze2_video_path, "to", gaze_frames_dir)
-        extract_all_frames(
-            gaze2_video_path, gaze_frames_dir, start_number=gaze2_start_number
+    if not dvapi_csv_paths:
+        raise RuntimeError(
+            "No dvapi_csv configured in config. "
+            "Cannot export per-episode DVAPI motion chunks."
         )
+    dvapi_dedup_df = read_dvapi_csv_dedup_by_api_cnt(dvapi_csv_paths)
 
-    # Determine output FPS (unified for all episode videos)
-    # We default to using GUI timestamps (absolute unix seconds) -> infer median dt.
-    # Then you can override with --fixed-fps.
-    if args.fps_mode == "fixed":
-        fps_ref = float(args.fixed_fps)
-    else:
-        ts = (
-            pd.to_numeric(merged["t_ref_s"], errors="coerce")
-            .dropna()
-            .to_numpy(dtype=np.float64)
-        )
-        # If timestamp is unix seconds and consecutive, dt median works.
-        dts = np.diff(ts)
-        dts = dts[np.isfinite(dts) & (dts > 0)]
-        if len(dts) == 0:
+    if not args.dvapi_only:
+        # Extract all frames once per modality (cache)
+        left_frames_dir = cache_dir / "left_frames"
+        right_frames_dir = cache_dir / "right_frames"
+        side_frames_dir = cache_dir / "side_frames"
+        gaze_frames_dir = cache_dir / "gaze_frames"
+
+        print("Extracting frames: from", left_video_path, "to", left_frames_dir)
+        extract_all_frames(left_video_path, left_frames_dir)
+        print("Extracting frames: from", right_video_path, "to", right_frames_dir)
+        extract_all_frames(right_video_path, right_frames_dir)
+        print("Extracting frames: from", side_video_path, "to", side_frames_dir)
+        extract_all_frames(side_video_path, side_frames_dir)
+        print("Extracting frames: from", gaze_video_path, "to", gaze_frames_dir)
+        gaze2_start_number = extract_all_frames(gaze_video_path, gaze_frames_dir)
+        # if another gaze video exists, extract frames from it
+        # eg. eyeVideo_12-29-2025_16-09-57.avi and eyeVideo_12-29-2025_16-09-57.av_2.avi
+        gaze2_video_path = gaze_video_path.with_name(gaze_video_path.stem + ".av_2.avi")
+        if gaze2_video_path.exists():
+            print("Extracting frames: from", gaze2_video_path, "to", gaze_frames_dir)
+            extract_all_frames(
+                gaze2_video_path, gaze_frames_dir, start_number=gaze2_start_number
+            )
+
+        # Determine output FPS (unified for all episode videos)
+        # We default to using GUI timestamps (absolute unix seconds) -> infer median dt.
+        # Then you can override with --fixed-fps.
+        if args.fps_mode == "fixed":
             fps_ref = float(args.fixed_fps)
         else:
-            fps_ref = float(1.0 / np.median(dts))
-            # guardrails
-            if fps_ref < 1 or fps_ref > 240:
+            ts = (
+                pd.to_numeric(merged["t_ref_s"], errors="coerce")
+                .dropna()
+                .to_numpy(dtype=np.float64)
+            )
+            # If timestamp is unix seconds and consecutive, dt median works.
+            dts = np.diff(ts)
+            dts = dts[np.isfinite(dts) & (dts > 0)]
+            if len(dts) == 0:
                 fps_ref = float(args.fixed_fps)
+            else:
+                fps_ref = float(1.0 / np.median(dts))
+                # guardrails
+                if fps_ref < 1 or fps_ref > 240:
+                    fps_ref = float(args.fixed_fps)
 
-    # Tasks: map label -> task_index
-    unique_labels = sorted({ep.label for ep in episodes})
-    label_to_task_index = {lbl: i for i, lbl in enumerate(unique_labels)}
-    tasks_rows = [
-        {"task_index": label_to_task_index[lbl], "task": f"gesture_{lbl}"}
-        for lbl in unique_labels
-    ]
-    write_jsonl(meta_dir / "tasks.jsonl", tasks_rows)
+        # Tasks: map label -> task_index
+        unique_labels = sorted({ep.label for ep in episodes})
+        label_to_task_index = {lbl: i for i, lbl in enumerate(unique_labels)}
+        tasks_rows = [
+            {"task_index": label_to_task_index[lbl], "task": f"gesture_{lbl}"}
+            for lbl in unique_labels
+        ]
+        write_jsonl(meta_dir / "tasks.jsonl", tasks_rows)
 
-    episodes_rows = []
-    episodes_stats_rows = []
+        episodes_rows = []
+        episodes_stats_rows = []
 
-    # We'll fill these after we create first episode videos (to know shapes)
-    video_shapes: Dict[str, Tuple[int, int]] = {}
+        # We'll fill these after we create first episode videos (to know shapes)
+        video_shapes: Dict[str, Tuple[int, int]] = {}
+    else:
+        print("DVAPI-only mode: skip video/parquet/meta export.")
 
     global_index = 0
     total_frames = 0
     total_videos = 0
+    total_robot_csv = 0
 
     # Create per-episode parquet + videos
     import tqdm
@@ -576,9 +667,38 @@ def main():
     for episode_index, ep in tqdm.tqdm(
         enumerate(episodes),
         total=len(episodes),
-        desc="Creating per-episode parquet + videos",
+        desc=(
+            "Creating per-episode robot DVAPI CSVs"
+            if args.dvapi_only
+            else "Creating per-episode parquet + videos"
+        ),
     ):
         rows = ep.rows.copy()
+
+        if "dvapi_row" not in rows.columns:
+            raise RuntimeError(
+                "sync table is missing required column 'dvapi_row' for DVAPI export."
+            )
+        dvapi_rows = pd.to_numeric(rows["dvapi_row"], errors="coerce")
+        if dvapi_rows.isna().any():
+            raise RuntimeError(
+                f"Episode {ep.episode_id} contains invalid dvapi_row values."
+            )
+        dvapi_rows = dvapi_rows.astype(np.int64).to_numpy()
+        invalid = (dvapi_rows < 0) | (dvapi_rows >= len(dvapi_dedup_df))
+        if np.any(invalid):
+            bad = dvapi_rows[np.where(invalid)[0][0]]
+            raise IndexError(
+                f"Episode {ep.episode_id} has dvapi_row={bad}, "
+                f"outside dedup DVAPI range [0, {len(dvapi_dedup_df) - 1}]."
+            )
+        episode_robot_df = dvapi_dedup_df.iloc[dvapi_rows].reset_index(drop=True)
+        episode_robot_csv = robot_dir / f"episode_{episode_index:06d}.csv"
+        episode_robot_df.to_csv(episode_robot_csv, index=False)
+        total_robot_csv += 1
+
+        if args.dvapi_only:
+            continue
 
         # Indices for each modality, 0-based frame indices into ORIGINAL videos
         # (Your sync_table_all_* uses columns left_idx/right_idx/side_idx/gaze_idx.)
@@ -709,6 +829,11 @@ def main():
             }
         )
 
+    if args.dvapi_only:
+        print("\n✅ DVAPI-only export complete.")
+        print(f"Robot DVAPI chunks written to: {robot_dir} ({total_robot_csv} files)")
+        return
+
     write_jsonl(meta_dir / "episodes.jsonl", episodes_rows)
     write_jsonl(meta_dir / "episodes_stats.jsonl", episodes_stats_rows)
 
@@ -782,6 +907,7 @@ def main():
 
     print("\n✅ Export complete.")
     print(f"Dataset written to: {out_root}")
+    print(f"Robot DVAPI chunks written to: {robot_dir} ({total_robot_csv} files)")
     print("\nNow validate:")
     file_path = os.path.join(os.path.dirname(__file__), "validate_formatting.py")
     print(f"  python {file_path} {out_root}\n")
