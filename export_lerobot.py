@@ -53,6 +53,14 @@ from __future__ import annotations
 import argparse
 import json
 import os
+
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    pass
+
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -69,6 +77,7 @@ import pyarrow.parquet as pq
 # FFmpeg helpers
 # -----------------------------
 
+
 def _run(cmd: List[str]) -> None:
     p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if p.returncode != 0:
@@ -77,6 +86,7 @@ def _run(cmd: List[str]) -> None:
             f"{' '.join(cmd)}\n\n"
             f"STDOUT:\n{p.stdout}\n\nSTDERR:\n{p.stderr}\n"
         )
+
 
 def ffmpeg_has_encoder(name: str) -> bool:
     """Return True if `ffmpeg -encoders` lists the given encoder name."""
@@ -92,15 +102,21 @@ def ffmpeg_has_encoder(name: str) -> bool:
     except Exception:
         return False
 
+
 def ffprobe_fps(video_path: Path) -> float:
     """
     Return FPS as float using ffprobe.
     """
     cmd = [
-        "ffprobe", "-v", "error",
-        "-select_streams", "v:0",
-        "-show_entries", "stream=avg_frame_rate",
-        "-of", "default=nokey=1:noprint_wrappers=1",
+        "ffprobe",
+        "-v",
+        "error",
+        "-select_streams",
+        "v:0",
+        "-show_entries",
+        "stream=avg_frame_rate",
+        "-of",
+        "default=nokey=1:noprint_wrappers=1",
         str(video_path),
     ]
     p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -112,7 +128,10 @@ def ffprobe_fps(video_path: Path) -> float:
         return float(num) / float(den)
     return float(rate)
 
-def extract_all_frames(video_path: Path, frames_dir: Path, start_number: int = 0) -> None:
+
+def extract_all_frames(
+    video_path: Path, frames_dir: Path, start_number: int = 0
+) -> None:
     """
     Extract all frames once, cached on disk. Output naming starts at start_number.
 
@@ -127,16 +146,29 @@ def extract_all_frames(video_path: Path, frames_dir: Path, start_number: int = 0
         return len(list(frames_dir.iterdir()))
 
     cmd = [
-        "ffmpeg", "-hide_banner", "-loglevel", "error",
-        "-i", str(video_path),
-        "-start_number", str(start_number),
-        "-vsync", "0",
+        "ffmpeg",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-i",
+        str(video_path),
+        "-start_number",
+        str(start_number),
+        "-vsync",
+        "0",
         str(frames_dir / "frame_%06d.png"),
     ]
     _run(cmd)
     return start_number + len(list(frames_dir.iterdir()))
 
-def make_episode_video_from_frames(frames_in_dir: Path, frame_indices: List[int], out_mp4: Path, fps: float, image_size: Tuple[int, int]=(256, 256)) -> Tuple[int, int]:
+
+def make_episode_video_from_frames(
+    frames_in_dir: Path,
+    frame_indices: List[int],
+    out_mp4: Path,
+    fps: float,
+    image_size: Tuple[int, int] = (256, 256),
+) -> Tuple[int, int]:
     """
     Copy needed frames into a temp sequence (0..N-1) then encode to mp4.
 
@@ -159,16 +191,27 @@ def make_episode_video_from_frames(frames_in_dir: Path, frame_indices: List[int]
 
     # Encode to MP4 (H.264 / libx264) with constant frame rate for best LeRobot compatibility.
     cmd = [
-        "ffmpeg", "-hide_banner", "-loglevel", "error",
-        "-framerate", f"{fps}",
-        "-i", str(tmp / "frame_%06d.png"),
-        "-vf", f"scale={W}:{H},setsar=1,setdar=0",
+        "ffmpeg",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-framerate",
+        f"{fps}",
+        "-i",
+        str(tmp / "frame_%06d.png"),
+        "-vf",
+        f"scale={W}:{H},setsar=1,setdar=0",
         # "-vf", f"scale={W}:{H}",
-        "-r", f"{fps}",
-        "-vsync", "cfr",
-        "-pix_fmt", "yuv420p",
-        "-c:v", "libx264",
-        "-movflags", "+faststart",
+        "-r",
+        f"{fps}",
+        "-vsync",
+        "cfr",
+        "-pix_fmt",
+        "yuv420p",
+        "-c:v",
+        "libx264",
+        "-movflags",
+        "+faststart",
         "-y",
         str(out_mp4),
     ]
@@ -176,10 +219,15 @@ def make_episode_video_from_frames(frames_in_dir: Path, frame_indices: List[int]
 
     # Read size with ffprobe
     cmd = [
-        "ffprobe", "-v", "error",
-        "-select_streams", "v:0",
-        "-show_entries", "stream=width,height",
-        "-of", "csv=p=0:s=x",
+        "ffprobe",
+        "-v",
+        "error",
+        "-select_streams",
+        "v:0",
+        "-show_entries",
+        "stream=width,height",
+        "-of",
+        "csv=p=0:s=x",
         str(out_mp4),
     ]
     p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -195,11 +243,13 @@ def make_episode_video_from_frames(frames_in_dir: Path, frame_indices: List[int]
 # LeRobot metadata helpers
 # -----------------------------
 
+
 def write_jsonl(path: Path, rows: List[dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
+
 
 def stats_for_array(x: np.ndarray) -> dict:
     # x: (T, D)
@@ -223,7 +273,10 @@ def stats_for_array(x: np.ndarray) -> dict:
         "std": sd.tolist(),
     }
 
-def write_episode_parquet_pyarrow(out_parquet: Path, rows: List[dict], action_dim: int, state_dim: int) -> None:
+
+def write_episode_parquet_pyarrow(
+    out_parquet: Path, rows: List[dict], action_dim: int, state_dim: int
+) -> None:
     """Write episode parquet with an explicit schema to avoid scalar/0-d issues in LeRobot.
 
     - action and observation.state are stored as fixed_size_list<float32>[D]
@@ -250,7 +303,9 @@ def write_episode_parquet_pyarrow(out_parquet: Path, rows: List[dict], action_di
                 # scalar -> wrap
                 v = [float(v)]
             if len(v) != dim:
-                raise ValueError(f"{name} length mismatch: expected {dim}, got {len(v)}")
+                raise ValueError(
+                    f"{name} length mismatch: expected {dim}, got {len(v)}"
+                )
             vals.append([float(x) for x in v])
         # Build FixedSizeListArray from flattened values
         flat = pa.array([x for row in vals for x in row], type=pa.float32())
@@ -275,30 +330,42 @@ def write_episode_parquet_pyarrow(out_parquet: Path, rows: List[dict], action_di
     side_arr = _vf("observation.images.side")
     gaze_arr = _vf("observation.images.gaze")
 
-    schema = pa.schema([
-        ("index", pa.int64()),
-        ("episode_index", pa.int64()),
-        ("frame_index", pa.int64()),
-        ("timestamp", pa.float32()),
-        ("task_index", pa.int64()),
-        ("next.done", pa.bool_()),
-        ("action", pa.list_(pa.float32(), list_size=action_dim)),
-        ("observation.state", pa.list_(pa.float32(), list_size=state_dim)),
-        ("observation.images.left", vf_type),
-        ("observation.images.right", vf_type),
-        ("observation.images.side", vf_type),
-        ("observation.images.gaze", vf_type),
-    ])
+    schema = pa.schema(
+        [
+            ("index", pa.int64()),
+            ("episode_index", pa.int64()),
+            ("frame_index", pa.int64()),
+            ("timestamp", pa.float32()),
+            ("task_index", pa.int64()),
+            ("next.done", pa.bool_()),
+            ("action", pa.list_(pa.float32(), list_size=action_dim)),
+            ("observation.state", pa.list_(pa.float32(), list_size=state_dim)),
+            ("observation.images.left", vf_type),
+            ("observation.images.right", vf_type),
+            ("observation.images.side", vf_type),
+            ("observation.images.gaze", vf_type),
+        ]
+    )
 
     table = pa.Table.from_arrays(
         [
-            index_arr, episode_index_arr, frame_index_arr, timestamp_arr,
-            task_index_arr, done_arr, action_arr, state_arr,
-            left_arr, right_arr, side_arr, gaze_arr
+            index_arr,
+            episode_index_arr,
+            frame_index_arr,
+            timestamp_arr,
+            task_index_arr,
+            done_arr,
+            action_arr,
+            state_arr,
+            left_arr,
+            right_arr,
+            side_arr,
+            gaze_arr,
         ],
         schema=schema,
     )
     pq.write_table(table, out_parquet, compression="zstd")
+
 
 def safe_float_timestamp_series(ts: np.ndarray) -> np.ndarray:
     # Ensure float64 seconds
@@ -321,7 +388,9 @@ def build_episodes(df_ep: pd.DataFrame) -> List[EpisodeSpec]:
     df = df_ep.copy()
     # normalize types
     df["episode_id"] = df["episode_id"].astype(str)
-    df["episode_label"] = pd.to_numeric(df["episode_label"], errors="coerce").fillna(-1).astype(int)
+    df["episode_label"] = (
+        pd.to_numeric(df["episode_label"], errors="coerce").fillna(-1).astype(int)
+    )
 
     # keep labeled episodes only
     df = df[df["episode_id"] != "-1"].copy()
@@ -341,14 +410,22 @@ def build_episodes(df_ep: pd.DataFrame) -> List[EpisodeSpec]:
 # Main export
 # -----------------------------
 
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", type=Path, required=True, help="config.json")
     ap.add_argument("--dataset-name", type=str, default="dataset")
 
     ap.add_argument("--profile", choices=["public", "internal"], default="public")
-    ap.add_argument("--cache-dir", type=Path, default=None, help="where to store extracted frames cache (default: <out>/.frame_cache)")
-    ap.add_argument("--fps-mode", choices=["from_timestamps", "fixed"], default="from_timestamps")
+    ap.add_argument(
+        "--cache-dir",
+        type=Path,
+        default=None,
+        help="where to store extracted frames cache (default: <out>/.frame_cache)",
+    )
+    ap.add_argument(
+        "--fps-mode", choices=["from_timestamps", "fixed"], default="from_timestamps"
+    )
     ap.add_argument("--fixed-fps", type=float, default=30.0)
 
     ap.add_argument(
@@ -365,7 +442,6 @@ def main():
     ap.add_argument("--state-dim", type=int, default=1)
     args = ap.parse_args()
 
-
     # TODO: instead of using the above arguments, use the config.json
     # ap.add_argument("--sync-all", type=Path, required=True, help="sync_table_all_*.csv")
     # ap.add_argument("--sync-ep", type=Path, required=True, help="GUI exported sync_table.csv")
@@ -375,18 +451,27 @@ def main():
     # ap.add_argument("--gaze-video", type=Path, required=True)
     # ap.add_argument("--out", type=Path, required=True, help="output dataset root folder")
 
-    with open(args.config, "r", encoding="utf-8") as f:
+    dataset_root = os.getenv("OPENH_UBC_DATASET_ROOT", "openh-ubc")
+    config_path = Path(dataset_root, args.config)
+    with open(config_path, "r", encoding="utf-8") as f:
         cfg = json.load(f)
         dataset_name = cfg.get("dataset_name", args.dataset_name)
         base_path = cfg.get("base_path", "")
         sync_all_file = Path(os.path.join(base_path, "sync_table_all.csv"))
-        sync_ep_file = Path(f"D://dataset//Surgical-Robot-Data-Processing//data//projects//{dataset_name}//index//sync_table.csv")
+        sync_ep_file = Path(
+            os.path.join(
+                dataset_root,
+                "projects",
+                dataset_name,
+                "index",
+                "sync_table.csv",
+            )
+        )
         left_video_path = Path(os.path.join(base_path, cfg["left_video"]))
         right_video_path = Path(os.path.join(base_path, cfg["right_video"]))
         side_video_path = Path(os.path.join(base_path, "side_camera/output.mp4"))
         gaze_video_path = Path(os.path.join(base_path, cfg["gaze_video"]))
         out_dir = Path(base_path)
-
 
     # LeRobot (video_backend="pytorch") is most reliable with H.264 (libx264) MP4.
     if not ffmpeg_has_encoder("libx264"):
@@ -409,7 +494,7 @@ def main():
 
     # Load CSVs
     df_all = pd.read_csv(sync_all_file)
-    df_ep  = pd.read_csv(sync_ep_file)
+    df_ep = pd.read_csv(sync_ep_file)
 
     # Merge episode rows with sync_all by row index (preferred) else by left_idx
     if "row_idx" in df_ep.columns and "row_idx" in df_all.columns:
@@ -422,10 +507,10 @@ def main():
         raise RuntimeError("No labeled episodes found (episode_id != -1).")
 
     # Extract all frames once per modality (cache)
-    left_frames_dir  = cache_dir / "left_frames"
+    left_frames_dir = cache_dir / "left_frames"
     right_frames_dir = cache_dir / "right_frames"
-    side_frames_dir  = cache_dir / "side_frames"
-    gaze_frames_dir  = cache_dir / "gaze_frames"
+    side_frames_dir = cache_dir / "side_frames"
+    gaze_frames_dir = cache_dir / "gaze_frames"
 
     print("Extracting frames: from", left_video_path, "to", left_frames_dir)
     extract_all_frames(left_video_path, left_frames_dir)
@@ -440,15 +525,21 @@ def main():
     gaze2_video_path = gaze_video_path.with_name(gaze_video_path.stem + ".av_2.avi")
     if gaze2_video_path.exists():
         print("Extracting frames: from", gaze2_video_path, "to", gaze_frames_dir)
-        extract_all_frames(gaze2_video_path, gaze_frames_dir, start_number=gaze2_start_number)
-    
+        extract_all_frames(
+            gaze2_video_path, gaze_frames_dir, start_number=gaze2_start_number
+        )
+
     # Determine output FPS (unified for all episode videos)
     # We default to using GUI timestamps (absolute unix seconds) -> infer median dt.
     # Then you can override with --fixed-fps.
     if args.fps_mode == "fixed":
         fps_ref = float(args.fixed_fps)
     else:
-        ts = pd.to_numeric(merged["t_ref_s"], errors="coerce").dropna().to_numpy(dtype=np.float64)
+        ts = (
+            pd.to_numeric(merged["t_ref_s"], errors="coerce")
+            .dropna()
+            .to_numpy(dtype=np.float64)
+        )
         # If timestamp is unix seconds and consecutive, dt median works.
         dts = np.diff(ts)
         dts = dts[np.isfinite(dts) & (dts > 0)]
@@ -463,7 +554,10 @@ def main():
     # Tasks: map label -> task_index
     unique_labels = sorted({ep.label for ep in episodes})
     label_to_task_index = {lbl: i for i, lbl in enumerate(unique_labels)}
-    tasks_rows = [{"task_index": label_to_task_index[lbl], "task": f"gesture_{lbl}"} for lbl in unique_labels]
+    tasks_rows = [
+        {"task_index": label_to_task_index[lbl], "task": f"gesture_{lbl}"}
+        for lbl in unique_labels
+    ]
     write_jsonl(meta_dir / "tasks.jsonl", tasks_rows)
 
     episodes_rows = []
@@ -478,15 +572,20 @@ def main():
 
     # Create per-episode parquet + videos
     import tqdm
-    for episode_index, ep in tqdm.tqdm(enumerate(episodes), total=len(episodes), desc="Creating per-episode parquet + videos"):
+
+    for episode_index, ep in tqdm.tqdm(
+        enumerate(episodes),
+        total=len(episodes),
+        desc="Creating per-episode parquet + videos",
+    ):
         rows = ep.rows.copy()
 
         # Indices for each modality, 0-based frame indices into ORIGINAL videos
         # (Your sync_table_all_* uses columns left_idx/right_idx/side_idx/gaze_idx.)
-        left_idxs  = rows["left_idx"].astype(int).tolist()
+        left_idxs = rows["left_idx"].astype(int).tolist()
         right_idxs = rows["right_idx"].astype(int).tolist()
-        side_idxs  = rows["side_idx"].astype(int).tolist()
-        gaze_idxs  = rows["gaze_idx"].astype(int).tolist()
+        side_idxs = rows["side_idx"].astype(int).tolist()
+        gaze_idxs = rows["gaze_idx"].astype(int).tolist()
 
         # Encode videos (unified fps_ref)
         def _video_out(cam_key: str) -> Path:
@@ -497,13 +596,37 @@ def main():
         cam_side = "observation.images.side"
         cam_gaze = "observation.images.gaze"
 
-        w, h = make_episode_video_from_frames(left_frames_dir, left_idxs, _video_out(cam_left), fps_ref, tuple(args.image_size))
+        w, h = make_episode_video_from_frames(
+            left_frames_dir,
+            left_idxs,
+            _video_out(cam_left),
+            fps_ref,
+            tuple(args.image_size),
+        )
         video_shapes.setdefault(cam_left, (h, w))
-        w, h = make_episode_video_from_frames(right_frames_dir, right_idxs, _video_out(cam_right), fps_ref, tuple(args.image_size))
+        w, h = make_episode_video_from_frames(
+            right_frames_dir,
+            right_idxs,
+            _video_out(cam_right),
+            fps_ref,
+            tuple(args.image_size),
+        )
         video_shapes.setdefault(cam_right, (h, w))
-        w, h = make_episode_video_from_frames(side_frames_dir, side_idxs, _video_out(cam_side), fps_ref, tuple(args.image_size))
+        w, h = make_episode_video_from_frames(
+            side_frames_dir,
+            side_idxs,
+            _video_out(cam_side),
+            fps_ref,
+            tuple(args.image_size),
+        )
         video_shapes.setdefault(cam_side, (h, w))
-        w, h = make_episode_video_from_frames(gaze_frames_dir, gaze_idxs, _video_out(cam_gaze), fps_ref, tuple(args.image_size))
+        w, h = make_episode_video_from_frames(
+            gaze_frames_dir,
+            gaze_idxs,
+            _video_out(cam_gaze),
+            fps_ref,
+            tuple(args.image_size),
+        )
         video_shapes.setdefault(cam_gaze, (h, w))
 
         total_videos += 4
@@ -520,33 +643,40 @@ def main():
 
         # Placeholder action/state (format-required)
         action = np.zeros((T, args.action_dim), dtype=np.float32)
-        state  = np.zeros((T, args.state_dim), dtype=np.float32)
+        state = np.zeros((T, args.state_dim), dtype=np.float32)
 
         for i in range(T):
-            done = (i == T - 1)
-            t = float(i * dt)   
+            done = i == T - 1
+            t = float(i * dt)
 
             def vf(cam_key: str) -> dict:
-                rel = Path("videos") / "chunk-000" / cam_key / f"episode_{episode_index:06d}.mp4"
+                rel = (
+                    Path("videos")
+                    / "chunk-000"
+                    / cam_key
+                    / f"episode_{episode_index:06d}.mp4"
+                )
                 return {
                     "path": str(rel.as_posix()),
-                    "timestamp": t,   # ✅ video timestamp == parquet timestamp
+                    "timestamp": t,  # ✅ video timestamp == parquet timestamp
                 }
 
-            parquet_rows.append({
-                "index": int(global_index),
-                "episode_index": int(episode_index),
-                "frame_index": int(i),
-                "timestamp": t,                 # ✅
-                "task_index": int(task_index),
-                "next.done": bool(done),
-                "action": action[i].tolist(),
-                "observation.state": state[i].tolist(),
-                cam_left: vf(cam_left),
-                cam_right: vf(cam_right),
-                cam_side: vf(cam_side),
-                cam_gaze: vf(cam_gaze),
-            })
+            parquet_rows.append(
+                {
+                    "index": int(global_index),
+                    "episode_index": int(episode_index),
+                    "frame_index": int(i),
+                    "timestamp": t,  # ✅
+                    "task_index": int(task_index),
+                    "next.done": bool(done),
+                    "action": action[i].tolist(),
+                    "observation.state": state[i].tolist(),
+                    cam_left: vf(cam_left),
+                    cam_right: vf(cam_right),
+                    cam_side: vf(cam_side),
+                    cam_gaze: vf(cam_gaze),
+                }
+            )
 
             global_index += 1
 
@@ -555,23 +685,29 @@ def main():
 
         # Write parquet
         out_parquet = data_dir / f"episode_{episode_index:06d}.parquet"
-        write_episode_parquet_pyarrow(out_parquet, parquet_rows, args.action_dim, args.state_dim)
+        write_episode_parquet_pyarrow(
+            out_parquet, parquet_rows, args.action_dim, args.state_dim
+        )
         # df_parquet = pd.DataFrame(parquet_rows)
         # df_parquet.to_parquet(out_parquet, index=False, engine="pyarrow")
 
-        episodes_rows.append({
-            "episode_index": int(episode_index),
-            "tasks": [f"gesture_{ep.label}"],
-            "length": int(T),
-        })
-
-        episodes_stats_rows.append({
-            "episode_index": int(episode_index),
-            "stats": {
-                "action": stats_for_array(action),
-                "observation.state": stats_for_array(state),
+        episodes_rows.append(
+            {
+                "episode_index": int(episode_index),
+                "tasks": [f"gesture_{ep.label}"],
+                "length": int(T),
             }
-        })
+        )
+
+        episodes_stats_rows.append(
+            {
+                "episode_index": int(episode_index),
+                "stats": {
+                    "action": stats_for_array(action),
+                    "observation.state": stats_for_array(state),
+                },
+            }
+        )
 
     write_jsonl(meta_dir / "episodes.jsonl", episodes_rows)
     write_jsonl(meta_dir / "episodes_stats.jsonl", episodes_stats_rows)
@@ -582,13 +718,21 @@ def main():
         "This dataset was exported from synchronized multi-modal recordings.\n\n"
         "## Synchronization\n"
         "Rows are aligned by a reference timestamp; each frame stores VideoFrame pointers into per-episode videos.\n",
-        encoding="utf-8"
+        encoding="utf-8",
     )
 
     # Build info.json
     features = {
-        "action": {"dtype": "float32", "shape": [int(args.action_dim)], "names": [f"a{i}" for i in range(args.action_dim)]},
-        "observation.state": {"dtype": "float32", "shape": [int(args.state_dim)], "names": [f"s{i}" for i in range(args.state_dim)]},
+        "action": {
+            "dtype": "float32",
+            "shape": [int(args.action_dim)],
+            "names": [f"a{i}" for i in range(args.action_dim)],
+        },
+        "observation.state": {
+            "dtype": "float32",
+            "shape": [int(args.state_dim)],
+            "names": [f"s{i}" for i in range(args.state_dim)],
+        },
     }
 
     for cam_key, (h, w) in video_shapes.items():
@@ -625,13 +769,15 @@ def main():
         },
         "features": features,
     }
-    (meta_dir / "info.json").write_text(json.dumps(info, indent=2, ensure_ascii=False), encoding="utf-8")
+    (meta_dir / "info.json").write_text(
+        json.dumps(info, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
 
     # Top-level README (optional but helpful)
     (out_root / "README.md").write_text(
         f"# {dataset_name}\n\n"
         "LeRobot v2.1 dataset exported from Open-H GUI episode labels.\n",
-        encoding="utf-8"
+        encoding="utf-8",
     )
 
     print("\n✅ Export complete.")

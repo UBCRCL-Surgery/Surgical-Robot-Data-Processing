@@ -86,7 +86,7 @@ python export_lerobot.py \
 ```
 Config file version
 ```
-python .\export_lerobot.py --config .\data\SurgMani\KnotTying\KT_CN_1.json --dataset-name f6c5c785d1 
+python export_lerobot.py --config KnotTying_raw/KT_CN_1.json
 ```
 
 3. Validate the data by run: `python ./validate_formatting.py /path/to/your/dataset`. For example, run `python ./validate_formatting.py /home/zijianwu/Codes/surg_gui/data/openh_ubc_sample/1bae367cb3`. You should see `0 ERROR` is the data is good.

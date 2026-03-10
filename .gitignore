@@ -1,4 +1,5 @@
 __pycache__
+.env
 legacy/
 proxy_left_frames/
 **/__pycache__/
